@@ -8,7 +8,7 @@ import "openzeppelin-contracts/contracts/utils/math/SafeMath.sol";
 import "./IERC20Extends.sol";
 
 interface ISwap {
-    event SwapToken(address swapAddress, address token, uint256 amount);
+    event SwapToken(address swapAddress, address inToken, address outToken, uint256 amountIn, uint256 outAmount);
     event AddLiquidity(address swapAddress, uint256 amountADesired, uint256 amountBDesired);
     function balanceOfToken0(address account) external view returns(uint256);
     function balanceOfToken1(address account) external view returns(uint256);
@@ -74,17 +74,13 @@ abstract contract Swap is ISwap {
         if (token == token0) {
             amountADesired = amount.div(2);
             otherAmount = amount.sub(amountADesired);
-            _swapToken(token0, otherAmount);
-            (uint256 reserve0,uint256 reserve1,) = pair.getReserves();
-            amountBDesired = router.getAmountOut(amountADesired, reserve0, reserve1);
+            amountBDesired = _swapToken(token0, otherAmount);
         }
 
         if (token == token1) {
             amountBDesired = amount.div(2);
             otherAmount = amount.sub(amountBDesired);
-            _swapToken(token1, otherAmount);
-            (uint256 reserve0,uint256 reserve1,) = pair.getReserves();
-            amountADesired = router.getAmountIn(amountBDesired, reserve0, reserve1);
+            amountADesired = _swapToken(token1, otherAmount);
         }
 
         uint256 beforeBalanceByToken0 = token0.balanceOf(address(this));
@@ -137,18 +133,21 @@ abstract contract Swap is ISwap {
         }
     }
 
-    function _swapToken(IERC20Extends token, uint256 amount) internal virtual {
+    function _swapToken(IERC20Extends token, uint256 amount) internal virtual returns(uint256) {
         require(token == token0 || token == token1, "Swap: token not is token0 and token1");
         IERC20Extends actionToken;
+        IERC20Extends outToken;
         address[] memory path = new address[](2);
         if (token == token0) {
             path[0] = address(token0);
             path[1] = address(token1);
             actionToken = token0;
+            outToken = token1;
         }else{
             path[0] = address(token1);
             path[1] = address(token0);
             actionToken = token1;
+            outToken = token0;
         }
 
         uint256 beforeBalance = actionToken.balanceOf(address(this));
@@ -158,6 +157,8 @@ abstract contract Swap is ISwap {
         amount = afterBalance.sub(beforeBalance);
         actionToken.approve(address(router), amount);
 
+        uint256 outTokenBeforeBalance = outToken.balanceOf(swapAddress);
+
         router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
             amount,
             0,
@@ -166,6 +167,11 @@ abstract contract Swap is ISwap {
             block.timestamp + 300
         );
 
-        emit SwapToken(swapAddress, address(actionToken), amount);
+        uint256 outTokenAfterBalance = outToken.balanceOf(swapAddress);
+
+        uint256 outAmount = outTokenAfterBalance.sub(outTokenBeforeBalance);
+
+        emit SwapToken(swapAddress, address(actionToken), address(outToken), amount, outAmount);
+        return outAmount;
     }
 }
