@@ -14,7 +14,7 @@ tasks:
     vars:
       file: '{{.file}}'
     cmds:
-      - forge test -vvvvv --mp {{.file}} --fork-url {{.RPC_URL}}
+      - forge test -vvvv --mp {{.file}} --fork-url {{.RPC_URL}}
 
   testYeStake:
     cmds:
