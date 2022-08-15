@@ -1,0 +1,15 @@
+# https://taskfile.dev
+
+version: '3'
+
+dotenv:
+  - .env
+
+tasks:
+  node:
+    cmds:
+      - anvil --fork-url {{.NODE_URL}}
+
+  test:
+    cmds:
+      - forge test -vvvv
