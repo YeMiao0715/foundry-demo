@@ -2,10 +2,10 @@
 pragma solidity ^0.8.0;
 
 
-import "uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
-import "uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
-import "openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "openzeppelin/contracts/utils/math/SafeMath.sol";
+import "v2-core/interfaces/IUniswapV2Pair.sol";
+import "v2-periphery/interfaces/IUniswapV2Router02.sol";
+import "openzeppelin-contracts/contracts/utils/math/SafeMath.sol";
+import "./IERC20Extends.sol";
 
 interface ISwap {
     event SwapToken(address swapAddress, address token, uint256 amount);
@@ -22,8 +22,8 @@ abstract contract Swap is ISwap {
 
     IUniswapV2Router02 public router;
     IUniswapV2Pair public pair;
-    ERC20 public token0;
-    ERC20 public token1;
+    IERC20Extends public token0;
+    IERC20Extends public token1;
     address public swapAddress;
 
     function _setRouter(address addr) internal virtual {
@@ -32,6 +32,8 @@ abstract contract Swap is ISwap {
 
     function _setPair(address addr) internal virtual {
         pair = IUniswapV2Pair(addr);
+        token0 = IERC20Extends(pair.token0());
+        token1 = IERC20Extends(pair.token1());
     }
 
     function _setSwapAddress(address addr) internal virtual {
@@ -64,7 +66,7 @@ abstract contract Swap is ISwap {
         return reserve1.mul(lpAmount.mul(1000).div(lpTotal)).div(1000);
     }
 
-    function _addLiquidity(ERC20 token, uint256 amount) internal virtual {
+    function _addLiquidity(IERC20Extends token, uint256 amount) internal virtual {
         require(token == token0 || token == token1, "Swap: token not is token0 and token1");
         uint256 amountADesired = 0;
         uint256 amountBDesired = 0;
@@ -135,9 +137,9 @@ abstract contract Swap is ISwap {
         }
     }
 
-    function _swapToken(ERC20 token, uint256 amount) internal virtual {
+    function _swapToken(IERC20Extends token, uint256 amount) internal virtual {
         require(token == token0 || token == token1, "Swap: token not is token0 and token1");
-        ERC20 actionToken;
+        IERC20Extends actionToken;
         address[] memory path = new address[](2);
         if (token == token0) {
             path[0] = address(token0);

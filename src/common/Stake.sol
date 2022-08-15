@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "./IERC20Extends.sol";
 
 interface IStake {
     event MintAmount(address caller, uint256 totalAmount);
@@ -12,11 +11,13 @@ interface IStake {
     function decimals() external view returns(uint8);
     function withdraw(uint256 amount) external;
     function withdrawAll() external;
+    function mintTotal() external view returns(uint256);
 }
 
 abstract contract Stake is IStake {
     mapping(address => uint256) _balances;
     uint256 private _totalSupply;
+    uint256 private _mintTotal;
     
     function balanceOf(address account) external view override returns(uint256) {
         return _balances[account];
@@ -26,8 +27,12 @@ abstract contract Stake is IStake {
         return _totalSupply;
     }
 
+    function mintTotal() external view override returns(uint256) {
+        return _mintTotal;
+    }
+
     function decimals() external view override returns(uint8) {
-        return ERC20(_withdrawToken()).decimals();
+        return _withdrawToken().decimals();
     }
 
     function _batchSetBalances(address caller, address[] memory _accounts, uint256[] memory _amounts) internal {
@@ -43,10 +48,11 @@ abstract contract Stake is IStake {
 
     function _afterBatchSetBalances(uint256 amount) internal virtual {
         _totalSupply += amount;
+        _mintTotal += amount;
     }
 
-    function _withdrawToken() internal virtual view returns(address) {
-        return address(0);
+    function _withdrawToken() internal virtual view returns(IERC20Extends) {
+        return IERC20Extends(address(0));
     }
 
     function withdraw(uint256 amount) external override {
@@ -58,12 +64,14 @@ abstract contract Stake is IStake {
     }
 
     function _withdraw(address account, uint256 amount) internal virtual {
-        require(_withdrawToken() != address(0), "Stake: withdraw token address is zero");
+        require(_balances[account] > 0, "Stake: withdraw amount is zero");
+        require(address(_withdrawToken()) != address(0), "Stake: withdraw token address is zero");
         require(_balances[account] >= amount, "Stake: account token balance is low");
-        uint256 tokenBalance = IERC20(_withdrawToken()).balanceOf(address(this));
+        uint256 tokenBalance = _withdrawToken().balanceOf(address(this));
         require(tokenBalance >= amount, "Stake: contract token balance is low");
-        IERC20(_withdrawToken()).transfer(account, amount);
+        _withdrawToken().transfer(account, amount);
         _balances[account] -= amount;
+        _totalSupply -= amount;
         emit Withdraw(account, amount);
     }
 }

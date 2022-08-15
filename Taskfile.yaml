@@ -11,5 +11,13 @@ tasks:
       - anvil --fork-url {{.NODE_URL}}
 
   test:
+    vars:
+      file: '{{.file}}'
     cmds:
-      - forge test -vvvv
+      - forge test -vvvvv --mp {{.file}} --fork-url {{.RPC_URL}}
+
+  testYeStake:
+    cmds:
+      - task: test
+        vars:
+          file: test/YeStake.t.sol
