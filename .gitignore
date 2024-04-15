@@ -8,4 +8,5 @@ out/
 /broadcast/*/31337/
 .env
 .idea
+*/.DS_Store
 .DS_Store
